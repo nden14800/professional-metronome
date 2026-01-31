@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Pro Metronome v2</title>
+    
+    <!-- Google Fonts: Roboto -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- CSS Variables & Theme Setup --- */
+        :root {
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent-color: #10b981; /* Green for counters */
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --border-color: #e5e7eb;
+            --input-bg: #f9fafb;
+            --btn-bg: #e5e7eb;
+            --btn-hover: #d1d5db;
+            --btn-text: #374151;
+            --dot-inactive: #e5e7eb;
+            --dot-border: #d1d5db;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #60a5fa;
+                --primary-hover: #3b82f6;
+                --accent-color: #34d399;
+                --bg-color: #111827;
+                --card-bg: #1f2937;
+                --text-main: #f9fafb;
+                --text-sub: #9ca3af;
+                --border-color: #374151;
+                --input-bg: #111827;
+                --btn-bg: #374151;
+                --btn-hover: #4b5563;
+                --btn-text: #e5e7eb;
+                --dot-inactive: #374151;
+                --dot-border: #4b5563;
+                --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+                --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
+                --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        /* --- Global Styles --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- Main Container --- */
+        .metronome-card {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 28px;
+            box-shadow: var(--shadow-md);
+            width: 100%;
+            max-width: 550px;
+            text-align: center;
+            transition: background-color 0.3s;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        h1 {
+            font-weight: 300;
+            font-size: 1.25rem;
+            color: var(--text-sub);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        /* --- Info Display Panel --- */
+        .info-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            background-color: var(--input-bg);
+            padding: 1rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .info-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .info-value {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+        
+        .info-value.count {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        /* --- Beats Visualizer --- */
+        .visualizer-container {
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Dot Mode (for low beat counts) */
+        .beats-dots {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            max-width: 100%;
+        }
+
+        .beat-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: transparent;
+            border: 2px solid var(--dot-border);
+            transition: all 0.1s;
+        }
+
+        .beat-dot.active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            transform: scale(1.2);
+            box-shadow: 0 0 8px var(--primary-color);
+        }
+        
+        .beat-dot.first {
+            border-color: var(--text-sub); /* 1拍目を少し区別 */
+        }
+
+        /* Numeric Mode (for high beat counts) */
+        .beats-numeric {
+            display: none; /* JS toggles this */
+            width: 100%;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 8px;
+            background-color: var(--dot-inactive);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .beats-text {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.2rem;
+            color: var(--text-sub);
+        }
+
+        .beats-text span {
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        /* --- BPM & Beat Controls --- */
+        .control-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .section-label {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            font-weight: 500;
+            align-self: flex-start;
+            margin-left: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .btn-adjust {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--btn-bg);
+            color: var(--btn-text);
+            font-size: 1.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-adjust:hover {
+            background-color: var(--btn-hover);
+            transform: scale(1.05);
+        }
+        
+        .btn-adjust:active {
+            transform: scale(0.95);
+        }
+
+        .main-input {
+            font-family: 'Roboto', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-main);
+            background: transparent;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            width: 160px;
+            text-align: center;
+            outline: none;
+            padding: 0;
+            transition: background-color 0.2s;
+            -moz-appearance: textfield;
+        }
+
+        .sub-input {
+            font-size: 2rem;
+            width: 120px;
+        }
+
+        .main-input:hover, .main-input:focus {
+            background-color: var(--input-bg);
+        }
+        
+        .main-input::-webkit-outer-spin-button,
+        .main-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .unit-label {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-sub);
+            margin-top: -5px;
+            display: block;
+        }
+
+        /* Slider */
+        .slider-wrapper {
+            padding: 0 10px;
+            margin-bottom: 1rem;
+        }
+        
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-top: 4px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: var(--input-bg);
+            border-radius: 3px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-inner);
+        }
+        
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: var(--input-bg);
+            border-radius: 3px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-inner);
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid var(--card-bg);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-moz-range-thumb {
+            height: 24px;
+            width: 24px;
+            border: none;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid var(--card-bg);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        /* --- Play Button --- */
+        .controls-main {
+            display: flex;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+
+        .btn-toggle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-toggle:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 14px 28px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-toggle:active {
+            transform: translateY(2px) scale(0.95);
+            box-shadow: 0 5px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-toggle svg {
+            width: 36px;
+            height: 36px;
+            fill: currentColor;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="metronome-card">
+        <h1>Pro Metronome</h1>
+
+        <!-- Info Panel: Time & Counts -->
+        <div class="info-panel">
+            <div class="info-item">
+                <span class="info-label">1拍の時間</span>
+                <span class="info-value" id="info-beat-time">-- ms</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">1周の時間</span>
+                <span class="info-value" id="info-cycle-time">-- s</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">周回数</span>
+                <span class="info-value count" id="info-count">0</span>
+            </div>
+        </div>
+
+        <!-- Visualizer: Dots or Progress Bar -->
+        <div class="visualizer-container">
+            <!-- Dots Mode (Low beat count) -->
+            <div class="beats-dots" id="visual-dots"></div>
+            <!-- Numeric Mode (High beat count) -->
+            <div class="beats-numeric" id="visual-numeric">
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="visual-progress"></div>
+                </div>
+                <div class="beats-text">
+                    <span id="visual-current">1</span> / <span id="visual-total">4</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- BPM Control -->
+        <div class="control-section">
+            <span class="section-label">TEMPO</span>
+            <div class="input-group">
+                <button class="btn-adjust" id="bpm-minus">-</button>
+                <div class="bpm-input-wrapper">
+                    <input type="number" id="bpm-input" class="main-input" value="120" inputmode="numeric">
+                    <span class="unit-label">BPM</span>
+                </div>
+                <button class="btn-adjust" id="bpm-plus">+</button>
+            </div>
+            <div class="slider-wrapper">
+                <input type="range" id="bpm-slider" min="0" max="2000" step="1" value="0">
+                <div class="slider-labels">
+                    <span>30</span>
+                    <span>10k</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Beats Control -->
+        <div class="control-section">
+            <span class="section-label">BEATS</span>
+            <div class="input-group">
+                <button class="btn-adjust" id="beats-minus">-</button>
+                <div class="bpm-input-wrapper">
+                    <input type="number" id="beats-input" class="main-input sub-input" value="4" inputmode="numeric">
+                    <span class="unit-label">拍数</span>
+                </div>
+                <button class="btn-adjust" id="beats-plus">+</button>
+            </div>
+            <div class="slider-wrapper">
+                <input type="range" id="beats-slider" min="4" max="1000" step="1" value="4">
+                <div class="slider-labels">
+                    <span>4</span>
+                    <span>1000</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Play Button -->
+        <div class="controls-main">
+            <button class="btn-toggle" id="play-btn" aria-label="Play">
+                <svg id="icon-play" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+                    <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>
+                </svg>
+                <svg id="icon-pause" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+                    <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class Metronome {
+            constructor() {
+                this.audioContext = null;
+                this.isPlaying = false;
+                
+                // Core Params
+                this.tempo = 120;
+                this.beatsPerMeasure = 4;
+                
+                // Scheduler Params
+                this.lookahead = 25.0; 
+                this.scheduleAheadTime = 0.1; 
+                this.nextNoteTime = 0.0;
+                this.currentBeatIndex = 0; // 0 to beatsPerMeasure - 1
+                this.cycleCount = 0;
+                this.timerID = null;
+
+                // Audio Buffers
+                this.highClickBuffer = null;
+                this.lowClickBuffer = null;
+                this.gainNode = null;
+
+                // UI Throttle
+                this.lastVisualTime = 0;
+                
+                // BPM Slider Logic (Logarithmic)
+                this.minBPM = 30;
+                this.maxBPM = 10000;
+                this.bpmSliderMax = 2000;
+
+                // Elements
+                this.els = {
+                    playBtn: document.getElementById('play-btn'),
+                    iconPlay: document.getElementById('icon-play'),
+                    iconPause: document.getElementById('icon-pause'),
+                    bpmInput: document.getElementById('bpm-input'),
+                    bpmSlider: document.getElementById('bpm-slider'),
+                    beatsInput: document.getElementById('beats-input'),
+                    beatsSlider: document.getElementById('beats-slider'),
+                    visualDots: document.getElementById('visual-dots'),
+                    visualNumeric: document.getElementById('visual-numeric'),
+                    visualCurrent: document.getElementById('visual-current'),
+                    visualTotal: document.getElementById('visual-total'),
+                    visualProgress: document.getElementById('visual-progress'),
+                    infoBeatTime: document.getElementById('info-beat-time'),
+                    infoCycleTime: document.getElementById('info-cycle-time'),
+                    infoCount: document.getElementById('info-count'),
+                    btns: {
+                        bpmPlus: document.getElementById('bpm-plus'),
+                        bpmMinus: document.getElementById('bpm-minus'),
+                        beatsPlus: document.getElementById('beats-plus'),
+                        beatsMinus: document.getElementById('beats-minus')
+                    }
+                };
+
+                this.initUI();
+                this.initEventListeners();
+                this.updateInfoDisplay();
+            }
+
+            initAudio() {
+                if (this.audioContext) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.audioContext = new AudioContext();
+                
+                // Master Compressor
+                const compressor = this.audioContext.createDynamicsCompressor();
+                compressor.threshold.value = -20;
+                this.gainNode = this.audioContext.createGain();
+                this.gainNode.gain.value = 0.8;
+                this.gainNode.connect(compressor);
+                compressor.connect(this.audioContext.destination);
+
+                // Create Sounds
+                this.highClickBuffer = this.createClickBuffer(1500, 0.03); 
+                this.lowClickBuffer = this.createClickBuffer(800, 0.03);
+            }
+
+            createClickBuffer(freq, length) {
+                const sr = this.audioContext.sampleRate;
+                const buffer = this.audioContext.createBuffer(1, sr * length, sr);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < buffer.length; i++) {
+                    const t = i / sr;
+                    const env = Math.exp(-t * 300);
+                    const osc = Math.sin(2 * Math.PI * freq * t);
+                    const noise = (Math.random() * 2 - 1) * Math.exp(-t * 1000);
+                    data[i] = (osc * 0.6 + noise * 0.4) * env;
+                }
+                return buffer;
+            }
+
+            // --- UI & Logic Sync ---
+            initUI() {
+                this.updateSliderFromTempo(this.tempo);
+                this.renderVisualizerBase();
+            }
+
+            // BPM Logarithmic Conversion
+            sliderToBpm(val) {
+                const percent = val / this.bpmSliderMax;
+                return Math.round(this.minBPM * Math.pow(this.maxBPM / this.minBPM, percent));
+            }
+
+            bpmToSlider(bpm) {
+                if (bpm < this.minBPM) return 0;
+                if (bpm > this.maxBPM) return this.bpmSliderMax;
+                return Math.round(this.bpmSliderMax * (Math.log(bpm / this.minBPM) / Math.log(this.maxBPM / this.minBPM)));
+            }
+
+            updateSliderFromTempo(bpm) {
+                this.els.bpmSlider.value = this.bpmToSlider(bpm);
+            }
+
+            // Beats Handling
+            setBeats(val) {
+                if (val < 1) val = 1;
+                this.beatsPerMeasure = val;
+                this.els.beatsInput.value = val;
+                
+                // Update Slider (clamp visually to 4-1000)
+                if (val >= 4 && val <= 1000) {
+                    this.els.beatsSlider.value = val;
+                } else if (val < 4) {
+                    this.els.beatsSlider.value = 4;
+                } else {
+                    this.els.beatsSlider.value = 1000;
+                }
+
+                // If playing, reset cycle logic smoothly or just update layout
+                this.renderVisualizerBase();
+                this.updateInfoDisplay();
+            }
+
+            // Render the dots or numeric display based on count
+            renderVisualizerBase() {
+                const limit = 32; // Threshold for switching mode
+                
+                if (this.beatsPerMeasure <= limit) {
+                    // Dot Mode
+                    this.els.visualDots.style.display = 'flex';
+                    this.els.visualNumeric.style.display = 'none';
+                    this.els.visualDots.innerHTML = '';
+                    
+                    for (let i = 0; i < this.beatsPerMeasure; i++) {
+                        const dot = document.createElement('div');
+                        dot.className = 'beat-dot';
+                        if (i === 0) dot.classList.add('first');
+                        dot.dataset.index = i;
+                        this.els.visualDots.appendChild(dot);
+                    }
+                } else {
+                    // Numeric Mode
+                    this.els.visualDots.style.display = 'none';
+                    this.els.visualNumeric.style.display = 'block';
+                    this.els.visualTotal.textContent = this.beatsPerMeasure;
+                }
+            }
+
+            updateInfoDisplay() {
+                const beatDurationSec = 60.0 / this.tempo;
+                const cycleDurationSec = beatDurationSec * this.beatsPerMeasure;
+
+                // Format ms
+                const ms = Math.round(beatDurationSec * 1000);
+                this.els.infoBeatTime.textContent = `${ms} ms`;
+                
+                // Format cycle time (smart format)
+                let cycleText = '';
+                if (cycleDurationSec < 60) {
+                    cycleText = cycleDurationSec.toFixed(2) + ' s';
+                } else {
+                    const m = Math.floor(cycleDurationSec / 60);
+                    const s = (cycleDurationSec % 60).toFixed(1);
+                    cycleText = `${m}m ${s}s`;
+                }
+                this.els.infoCycleTime.textContent = cycleText;
+            }
+
+            // --- Event Listeners ---
+            initEventListeners() {
+                // Play Toggle
+                this.els.playBtn.addEventListener('click', (e) => {
+                    if (this.audioContext && this.audioContext.state === 'suspended') {
+                        this.audioContext.resume();
+                    }
+                    this.isPlaying ? this.stop() : this.start();
+                    e.preventDefault();
+                });
+
+                // BPM Inputs
+                this.els.bpmSlider.addEventListener('input', (e) => {
+                    this.tempo = this.sliderToBpm(parseInt(e.target.value));
+                    this.els.bpmInput.value = this.tempo;
+                    this.updateInfoDisplay();
+                });
+                this.els.bpmInput.addEventListener('change', (e) => {
+                    let val = parseFloat(e.target.value);
+                    if (isNaN(val) || val <= 0) val = this.tempo;
+                    this.tempo = val;
+                    this.els.bpmInput.value = val;
+                    this.updateSliderFromTempo(val);
+                    this.updateInfoDisplay();
+                });
+                this.els.btns.bpmPlus.addEventListener('click', () => {
+                    this.tempo++;
+                    this.els.bpmInput.value = this.tempo;
+                    this.updateSliderFromTempo(this.tempo);
+                    this.updateInfoDisplay();
+                });
+                this.els.btns.bpmMinus.addEventListener('click', () => {
+                    if (this.tempo > 1) {
+                        this.tempo--;
+                        this.els.bpmInput.value = this.tempo;
+                        this.updateSliderFromTempo(this.tempo);
+                        this.updateInfoDisplay();
+                    }
+                });
+
+                // Beats Inputs
+                this.els.beatsSlider.addEventListener('input', (e) => {
+                    this.setBeats(parseInt(e.target.value));
+                });
+                this.els.beatsInput.addEventListener('change', (e) => {
+                    let val = parseInt(e.target.value);
+                    if (isNaN(val) || val <= 0) val = 4;
+                    this.setBeats(val);
+                });
+                this.els.btns.beatsPlus.addEventListener('click', () => {
+                    this.setBeats(this.beatsPerMeasure + 1);
+                });
+                this.els.btns.beatsMinus.addEventListener('click', () => {
+                    if (this.beatsPerMeasure > 1) {
+                        this.setBeats(this.beatsPerMeasure - 1);
+                    }
+                });
+            }
+
+            // --- Core Scheduler ---
+            nextNote() {
+                const secondsPerBeat = 60.0 / this.tempo;
+                this.nextNoteTime += secondsPerBeat;
+                
+                this.currentBeatIndex++;
+                if (this.currentBeatIndex >= this.beatsPerMeasure) {
+                    this.currentBeatIndex = 0;
+                    this.cycleCount++;
+                }
+            }
+
+            scheduleNote(beatIndex, time) {
+                // Audio
+                const source = this.audioContext.createBufferSource();
+                source.buffer = (beatIndex === 0) ? this.highClickBuffer : this.lowClickBuffer;
+                source.connect(this.gainNode);
+                source.start(time);
+
+                // Visual Schedule
+                const timeToDraw = time - this.audioContext.currentTime;
+                
+                // Throttle: Skip visual update if system is lagging heavily at high BPM
+                // But ensure 1st beat always flashes if possible
+                if (timeToDraw >= 0 && timeToDraw < 1.0) {
+                    // Create a dedicated closure for this beat's visual
+                    setTimeout(() => {
+                        this.drawVisuals(beatIndex);
+                    }, timeToDraw * 1000);
+                }
+            }
+
+            drawVisuals(beatIndex) {
+                // Update Count immediately
+                if (beatIndex === 0) {
+                    this.els.infoCount.textContent = this.cycleCount;
+                }
+
+                // Throttle drawing for extremely high BPM (>1000) to save CPU
+                // Allow drawing if tempo is low OR if it's the downbeat
+                const now = Date.now();
+                if (this.tempo > 600 && beatIndex !== 0 && (now - this.lastVisualTime < 30)) {
+                    return;
+                }
+                this.lastVisualTime = now;
+
+                const isDotsMode = this.els.visualDots.style.display !== 'none';
+
+                if (isDotsMode) {
+                    // Dots Logic
+                    // Optimization: Instead of querying all dots, manage state if possible, 
+                    // but simple class toggling is robust.
+                    const dots = this.els.visualDots.children;
+                    // Reset previous active (simple approach)
+                    const prevIndex = (beatIndex === 0) ? this.beatsPerMeasure - 1 : beatIndex - 1;
+                    if (dots[prevIndex]) dots[prevIndex].classList.remove('active');
+                    
+                    // Set current
+                    if (dots[beatIndex]) dots[beatIndex].classList.add('active');
+
+                    // Fail-safe cleanup (sometimes timeouts overlap)
+                    if (beatIndex === 0) {
+                         Array.from(dots).forEach(d => d.classList.remove('active'));
+                         if(dots[0]) dots[0].classList.add('active');
+                    }
+
+                } else {
+                    // Numeric/Bar Logic
+                    const currentDisp = beatIndex + 1;
+                    this.els.visualCurrent.textContent = currentDisp;
+                    const pct = (currentDisp / this.beatsPerMeasure) * 100;
+                    this.els.visualProgress.style.width = `${pct}%`;
+                }
+            }
+
+            scheduler() {
+                while (this.nextNoteTime < this.audioContext.currentTime + this.scheduleAheadTime) {
+                    this.scheduleNote(this.currentBeatIndex, this.nextNoteTime);
+                    this.nextNote();
+                }
+                if (this.isPlaying) {
+                    this.timerID = window.setTimeout(() => this.scheduler(), this.lookahead);
+                }
+            }
+
+            start() {
+                if (this.isPlaying) return;
+                this.initAudio();
+                if (this.audioContext.state === 'suspended') this.audioContext.resume();
+
+                this.isPlaying = true;
+                this.currentBeatIndex = 0;
+                this.cycleCount = 0;
+                this.els.infoCount.textContent = "0";
+                
+                // Reset visuals
+                if (this.els.visualDots.style.display !== 'none') {
+                    Array.from(this.els.visualDots.children).forEach(d => d.classList.remove('active'));
+                }
+
+                this.nextNoteTime = this.audioContext.currentTime + 0.05;
+                this.scheduler();
+                
+                this.els.iconPlay.style.display = 'none';
+                this.els.iconPause.style.display = 'block';
+                this.els.playBtn.setAttribute('aria-label', 'Pause');
+            }
+
+            stop() {
+                this.isPlaying = false;
+                window.clearTimeout(this.timerID);
+                this.els.iconPlay.style.display = 'block';
+                this.els.iconPause.style.display = 'none';
+                this.els.playBtn.setAttribute('aria-label', 'Play');
+            }
+        }
+
+        const metronome = new Metronome();
+    </script>
+</body>
+</html>
